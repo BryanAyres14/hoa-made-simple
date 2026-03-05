@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "hoa_app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    { "src": "/hoa/login/?", "dest": "hoa_app.py" },
+    { "src": "/hoa/manager/?", "dest": "hoa_app.py" },
+    { "src": "/hoa/portal/?", "dest": "hoa_app.py" },
+    { "src": "/hoa/portal/(.*)", "dest": "hoa_app.py" },
+    { "src": "/hoa/admin/?", "dest": "hoa_app.py" },
+    { "src": "/api/hoa/(.*)", "dest": "hoa_app.py" },
+    { "src": "/health", "dest": "hoa_app.py" },
+    { "src": "/", "dest": "hoa_app.py" }
+  ]
+}
