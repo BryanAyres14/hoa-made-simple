@@ -1,35 +1,208 @@
 """
-NearMeHQ Database Layer (Supabase)
-===================================
+NearMeHQ Database Layer (Supabase REST API)
+=============================================
+Direct REST API wrapper — avoids supabase-py version conflicts on Vercel.
 All database operations in one place. Every other module imports from here.
 """
-from supabase import create_client as _supabase_create_client, Client
+import requests
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_ANON_KEY
 from datetime import datetime, timezone
 import json
 
-# Use service key for server-side operations (full access)
-# Use anon key for client-side / read-only operations
-_supabase: Client = None
+# ============================================================
+# SUPABASE REST CLIENT (lightweight, no supabase-py dependency)
+# ============================================================
+
+_REST_URL = None
+_API_KEY = None
+_AUTH_HEADER = None
 
 
-def get_db() -> Client:
-    """Get or create Supabase client (singleton)."""
-    global _supabase
-    if _supabase is None:
+def _init_rest():
+    global _REST_URL, _API_KEY, _AUTH_HEADER
+    if _REST_URL is None:
         key = SUPABASE_SERVICE_KEY or SUPABASE_ANON_KEY
         if not key:
-            raise ValueError("No Supabase key configured. Set SUPABASE_SERVICE_KEY or SUPABASE_ANON_KEY.")
-        _supabase = _supabase_create_client(SUPABASE_URL, key)
-    return _supabase
+            raise ValueError("No Supabase key configured.")
+        _REST_URL = f"{SUPABASE_URL}/rest/v1"
+        _API_KEY = key
+        _AUTH_HEADER = {
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation",
+        }
+
+
+class _APIResponse:
+    """Mimics supabase-py APIResponse for compatibility."""
+    def __init__(self, data, count=None):
+        self.data = data
+        self.count = count
+
+
+class _QueryBuilder:
+    """Chainable query builder that mirrors supabase-py's interface."""
+
+    def __init__(self, table_name):
+        _init_rest()
+        self._table = table_name
+        self._url = f"{_REST_URL}/{table_name}"
+        self._method = "GET"
+        self._params = {}
+        self._headers = dict(_AUTH_HEADER)
+        self._body = None
+        self._select_cols = "*"
+        self._single = False
+        self._maybe_single = False
+
+    def select(self, columns="*"):
+        self._method = "GET"
+        self._select_cols = columns
+        self._params["select"] = columns
+        return self
+
+    def insert(self, data):
+        self._method = "POST"
+        self._body = data if isinstance(data, list) else data
+        return self
+
+    def update(self, data):
+        self._method = "PATCH"
+        self._body = data
+        return self
+
+    def delete(self):
+        self._method = "DELETE"
+        return self
+
+    def eq(self, column, value):
+        self._params[column] = f"eq.{value}"
+        return self
+
+    def neq(self, column, value):
+        self._params[column] = f"neq.{value}"
+        return self
+
+    def gt(self, column, value):
+        self._params[column] = f"gt.{value}"
+        return self
+
+    def gte(self, column, value):
+        self._params[column] = f"gte.{value}"
+        return self
+
+    def lt(self, column, value):
+        self._params[column] = f"lt.{value}"
+        return self
+
+    def lte(self, column, value):
+        self._params[column] = f"lte.{value}"
+        return self
+
+    def in_(self, column, values):
+        vals = ",".join(str(v) for v in values)
+        self._params[column] = f"in.({vals})"
+        return self
+
+    def like(self, column, pattern):
+        self._params[column] = f"like.{pattern}"
+        return self
+
+    def ilike(self, column, pattern):
+        self._params[column] = f"ilike.{pattern}"
+        return self
+
+    def is_(self, column, value):
+        self._params[column] = f"is.{value}"
+        return self
+
+    def order(self, column, desc=False):
+        direction = "desc" if desc else "asc"
+        self._params["order"] = f"{column}.{direction}"
+        return self
+
+    def limit(self, count):
+        self._params["limit"] = str(count)
+        return self
+
+    def offset(self, count):
+        self._params["offset"] = str(count)
+        return self
+
+    def single(self):
+        self._single = True
+        self._headers["Accept"] = "application/vnd.pgrst.object+json"
+        return self
+
+    def maybe_single(self):
+        self._maybe_single = True
+        self._headers["Accept"] = "application/vnd.pgrst.object+json"
+        return self
+
+    def execute(self):
+        """Execute the query and return an _APIResponse."""
+        try:
+            if self._method == "GET":
+                resp = requests.get(self._url, params=self._params, headers=self._headers, timeout=15)
+            elif self._method == "POST":
+                resp = requests.post(self._url, params=self._params, headers=self._headers,
+                                     json=self._body, timeout=15)
+            elif self._method == "PATCH":
+                resp = requests.patch(self._url, params=self._params, headers=self._headers,
+                                      json=self._body, timeout=15)
+            elif self._method == "DELETE":
+                resp = requests.delete(self._url, params=self._params, headers=self._headers, timeout=15)
+            else:
+                return _APIResponse(None)
+
+            # Handle response
+            if resp.status_code == 406 and self._maybe_single:
+                # No rows found with maybe_single — return None data
+                return _APIResponse(None)
+
+            if resp.status_code >= 400:
+                # For maybe_single, treat 404/406 as no data
+                if self._maybe_single:
+                    return _APIResponse(None)
+                raise Exception(f"Supabase error {resp.status_code}: {resp.text}")
+
+            data = resp.json() if resp.text else None
+
+            # For single/maybe_single, data is a dict (single object) or None
+            # For normal queries, data is a list
+            return _APIResponse(data)
+
+        except requests.exceptions.RequestException as e:
+            if self._maybe_single:
+                return _APIResponse(None)
+            raise Exception(f"Database connection error: {str(e)}")
+
+
+class _SupabaseREST:
+    """Lightweight Supabase REST client that mimics supabase-py's interface."""
+
+    def table(self, table_name):
+        return _QueryBuilder(table_name)
+
+
+# Singleton
+_db_instance = None
+
+
+def get_db():
+    """Get the database client (singleton)."""
+    global _db_instance
+    if _db_instance is None:
+        _db_instance = _SupabaseREST()
+    return _db_instance
 
 
 # ============================================================
-# CLIENTS
+# CLIENTS (NearMeHQ helpers — unchanged interface)
 # ============================================================
 
 def get_client_by_twilio(twilio_number: str) -> dict | None:
-    """Look up a business by its Twilio tracking number."""
     result = get_db().table("nearmehq_clients") \
         .select("*") \
         .eq("twilio_number", twilio_number) \
@@ -39,7 +212,6 @@ def get_client_by_twilio(twilio_number: str) -> dict | None:
 
 
 def get_client_by_id(client_id: str) -> dict | None:
-    """Look up a business by UUID."""
     result = get_db().table("nearmehq_clients") \
         .select("*") \
         .eq("id", client_id) \
@@ -49,7 +221,6 @@ def get_client_by_id(client_id: str) -> dict | None:
 
 
 def get_client_by_stripe_customer(stripe_customer_id: str) -> dict | None:
-    """Look up business by Stripe customer ID."""
     result = get_db().table("nearmehq_clients") \
         .select("*") \
         .eq("stripe_customer_id", stripe_customer_id) \
@@ -59,7 +230,6 @@ def get_client_by_stripe_customer(stripe_customer_id: str) -> dict | None:
 
 
 def get_client_by_stripe_subscription(subscription_id: str) -> dict | None:
-    """Look up business by Stripe subscription ID."""
     result = get_db().table("nearmehq_clients") \
         .select("*") \
         .eq("stripe_subscription_id", subscription_id) \
@@ -69,7 +239,6 @@ def get_client_by_stripe_subscription(subscription_id: str) -> dict | None:
 
 
 def get_clients_by_city_category(city: str, category: str, status_filter: list = None) -> list:
-    """Get all businesses in a city/category, optionally filtered by status."""
     query = get_db().table("nearmehq_clients") \
         .select("*") \
         .eq("city", city) \
@@ -81,7 +250,6 @@ def get_clients_by_city_category(city: str, category: str, status_filter: list =
 
 
 def get_paying_clients(city: str = None, category: str = None) -> list:
-    """Get paying clients, optionally filtered."""
     query = get_db().table("nearmehq_clients") \
         .select("*") \
         .in_("status", ["starter", "premium", "exclusive"])
@@ -94,7 +262,6 @@ def get_paying_clients(city: str = None, category: str = None) -> list:
 
 
 def update_client(client_id: str, updates: dict) -> dict:
-    """Update a client record."""
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     result = get_db().table("nearmehq_clients") \
         .update(updates) \
@@ -104,7 +271,6 @@ def update_client(client_id: str, updates: dict) -> dict:
 
 
 def create_client(data: dict) -> dict:
-    """Insert a new client."""
     result = get_db().table("nearmehq_clients") \
         .insert(data) \
         .execute()
@@ -113,12 +279,11 @@ def create_client(data: dict) -> dict:
 
 def activate_client(client_id: str, tier: str, stripe_customer_id: str,
                     stripe_subscription_id: str, twilio_number: str, real_phone: str) -> dict:
-    """Activate a client after payment — sets tier, Stripe IDs, Twilio number."""
     from config import TIERS
     tier_config = TIERS.get(tier, {})
     return update_client(client_id, {
         "status": tier,
-        "tier_price": tier_config.get("price", 0) / 100,  # Convert cents to dollars
+        "tier_price": tier_config.get("price", 0) / 100,
         "stripe_customer_id": stripe_customer_id,
         "stripe_subscription_id": stripe_subscription_id,
         "twilio_number": twilio_number,
@@ -129,7 +294,6 @@ def activate_client(client_id: str, tier: str, stripe_customer_id: str,
 
 
 def deactivate_client(client_id: str) -> dict:
-    """Deactivate when subscription canceled — downgrade to claimed, stop forwarding."""
     return update_client(client_id, {
         "status": "claimed",
         "tier_price": 0,
@@ -143,7 +307,6 @@ def deactivate_client(client_id: str) -> dict:
 # ============================================================
 
 def log_call(call_data: dict) -> dict:
-    """Log a call event."""
     result = get_db().table("nearmehq_calls") \
         .insert(call_data) \
         .execute()
@@ -151,7 +314,6 @@ def log_call(call_data: dict) -> dict:
 
 
 def get_calls_for_client(twilio_number: str, days: int = 30) -> list:
-    """Get recent calls for a client's tracking number."""
     from datetime import timedelta
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     result = get_db().table("nearmehq_calls") \
@@ -164,7 +326,6 @@ def get_calls_for_client(twilio_number: str, days: int = 30) -> list:
 
 
 def get_call_stats(twilio_number: str, days: int = 30) -> dict:
-    """Get aggregated call stats for a tracking number."""
     calls = get_calls_for_client(twilio_number, days)
     total = len(calls)
     forwarded = sum(1 for c in calls if c.get("call_type") == "forwarded")
@@ -173,7 +334,6 @@ def get_call_stats(twilio_number: str, days: int = 30) -> dict:
     missed = sum(1 for c in calls if c.get("call_type") == "missed")
     total_duration = sum(c.get("duration", 0) for c in calls)
     avg_duration = total_duration / max(forwarded, 1)
-
     return {
         "total_calls": total,
         "forwarded": forwarded,
@@ -187,7 +347,6 @@ def get_call_stats(twilio_number: str, days: int = 30) -> dict:
 
 
 def update_call(call_sid: str, updates: dict) -> dict:
-    """Update a call record (e.g., add transcription, recording URL)."""
     result = get_db().table("nearmehq_calls") \
         .update(updates) \
         .eq("call_sid", call_sid) \
@@ -200,7 +359,6 @@ def update_call(call_sid: str, updates: dict) -> dict:
 # ============================================================
 
 def create_lead(lead_data: dict) -> dict:
-    """Save a captured lead."""
     result = get_db().table("nearmehq_leads") \
         .insert(lead_data) \
         .execute()
@@ -208,7 +366,6 @@ def create_lead(lead_data: dict) -> dict:
 
 
 def get_leads(city: str = None, category: str = None, status: str = "new") -> list:
-    """Get leads, optionally filtered."""
     query = get_db().table("nearmehq_leads") \
         .select("*") \
         .eq("status", status)
@@ -221,7 +378,6 @@ def get_leads(city: str = None, category: str = None, status: str = "new") -> li
 
 
 def assign_lead(lead_id: str, client_id: str) -> dict:
-    """Assign a lead to a paying client."""
     return get_db().table("nearmehq_leads") \
         .update({
             "assigned_to": client_id,
@@ -233,7 +389,6 @@ def assign_lead(lead_id: str, client_id: str) -> dict:
 
 
 def sell_lead(lead_id: str, price: float) -> dict:
-    """Mark a lead as sold."""
     return get_db().table("nearmehq_leads") \
         .update({
             "status": "sold",
@@ -250,7 +405,6 @@ def sell_lead(lead_id: str, price: float) -> dict:
 
 def log_revenue(client_id: str, amount: float, revenue_type: str,
                 description: str = "", stripe_payment_id: str = "") -> dict:
-    """Log a revenue event."""
     result = get_db().table("nearmehq_revenue") \
         .insert({
             "client_id": client_id,
@@ -264,7 +418,6 @@ def log_revenue(client_id: str, amount: float, revenue_type: str,
 
 
 def get_revenue_by_city() -> list:
-    """Get revenue aggregated by city (uses the view)."""
     result = get_db().table("nearmehq_city_revenue") \
         .select("*") \
         .execute()
@@ -272,7 +425,6 @@ def get_revenue_by_city() -> list:
 
 
 def get_revenue_for_client(client_id: str) -> list:
-    """Get all revenue records for a client."""
     result = get_db().table("nearmehq_revenue") \
         .select("*") \
         .eq("client_id", client_id) \
