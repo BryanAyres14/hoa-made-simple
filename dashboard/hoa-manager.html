@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOA Ledger — Manager Dashboard</title>
+<style>
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --green: #16a34a;
+  --red: #dc2626;
+  --orange: #ea580c;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --sidebar-w: 220px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-50); color: var(--gray-800); }
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-w);
+  background: var(--gray-900); color: white; overflow-y: auto; z-index: 100;
+}
+.sidebar-logo { padding: 20px 16px; border-bottom: 1px solid var(--gray-700); }
+.sidebar-logo h2 { font-size: 16px; font-weight: 700; }
+.sidebar-logo span { font-size: 11px; color: var(--gray-400); }
+.nav-section { padding: 12px 0; }
+.nav-section-label { padding: 4px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--gray-500); font-weight: 600; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer;
+  font-size: 13px; color: var(--gray-300); transition: all 0.15s;
+}
+.nav-item:hover { background: var(--gray-800); color: white; }
+.nav-item.active { background: var(--primary); color: white; font-weight: 600; }
+.nav-item .icon { width: 18px; text-align: center; font-size: 14px; }
+.nav-divider { height: 1px; background: var(--gray-700); margin: 4px 16px; }
+
+/* MAIN CONTENT */
+.main { margin-left: var(--sidebar-w); min-height: 100vh; }
+.topbar {
+  position: sticky; top: 0; z-index: 50; background: white;
+  border-bottom: 1px solid var(--gray-200); padding: 12px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar h1 { font-size: 18px; font-weight: 700; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+.content { padding: 24px; }
+
+/* CARDS */
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: white; border-radius: 8px; padding: 20px; border: 1px solid var(--gray-200);
+}
+.stat-card .label { font-size: 12px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.stat-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.stat-card .sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+.stat-card.green .value { color: var(--green); }
+.stat-card.red .value { color: var(--red); }
+.stat-card.blue .value { color: var(--primary); }
+
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+  border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid transparent; transition: all 0.15s;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: white; color: var(--gray-700); border-color: var(--gray-300); }
+.btn-secondary:hover { background: var(--gray-50); }
+.btn-danger { background: var(--red); color: white; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-icon { padding: 6px 8px; }
+
+/* DATA TABLE */
+.table-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; gap: 12px; flex-wrap: wrap;
+}
+.search-box {
+  display: flex; align-items: center; gap: 8px; background: white;
+  border: 1px solid var(--gray-300); border-radius: 6px; padding: 6px 12px; flex: 1; max-width: 320px;
+}
+.search-box input { border: none; outline: none; font-size: 13px; width: 100%; }
+.filter-pills { display: flex; gap: 6px; }
+.pill {
+  padding: 4px 12px; border-radius: 20px; font-size: 12px; cursor: pointer;
+  border: 1px solid var(--gray-300); background: white; color: var(--gray-600);
+}
+.pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+.data-grid {
+  background: white; border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden;
+}
+.data-grid table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-grid th {
+  background: var(--gray-50); padding: 10px 12px; text-align: left;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--gray-500); font-weight: 600; border-bottom: 1px solid var(--gray-200);
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+.data-grid th:hover { background: var(--gray-100); }
+.data-grid td {
+  padding: 10px 12px; border-bottom: 1px solid var(--gray-100); vertical-align: middle;
+}
+.data-grid tr:hover td { background: #f0f7ff; }
+.data-grid td input {
+  border: none; background: transparent; font-size: 13px; width: 100%;
+  padding: 2px 0; outline: none; font-family: inherit;
+}
+.data-grid td input:focus { border-bottom: 2px solid var(--primary); background: white; }
+
+/* STATUS BADGES */
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+}
+.badge-green { background: #dcfce7; color: #166534; }
+.badge-red { background: #fef2f2; color: #991b1b; }
+.badge-yellow { background: #fefce8; color: #854d0e; }
+.badge-blue { background: #dbeafe; color: #1e40af; }
+.badge-gray { background: var(--gray-100); color: var(--gray-600); }
+
+/* PANELS / SECTIONS */
+.panel {
+  background: white; border: 1px solid var(--gray-200); border-radius: 8px;
+  margin-bottom: 20px;
+}
+.panel-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--gray-200);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-header h3 { font-size: 15px; font-weight: 700; }
+.panel-body { padding: 20px; }
+
+/* TABS */
+.tabs { display: flex; border-bottom: 2px solid var(--gray-200); margin-bottom: 20px; }
+.tab {
+  padding: 10px 20px; cursor: pointer; font-size: 13px; font-weight: 600;
+  color: var(--gray-500); border-bottom: 2px solid transparent; margin-bottom: -2px;
+}
+.tab:hover { color: var(--gray-700); }
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* MODAL */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 200; align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: white; border-radius: 12px; width: 90%; max-width: 700px;
+  max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-header {
+  padding: 20px 24px; border-bottom: 1px solid var(--gray-200);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h2 { font-size: 18px; font-weight: 700; }
+.modal-close { cursor: pointer; font-size: 20px; color: var(--gray-400); background: none; border: none; }
+.modal-body { padding: 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--gray-200); display: flex; gap: 8px; justify-content: flex-end; }
+
+/* FORMS */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px;
+  font-size: 13px; font-family: inherit;
+}
+.form-group textarea { min-height: 80px; resize: vertical; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* PAGINATION */
+.pagination { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
+.pagination .info { font-size: 12px; color: var(--gray-500); }
+.page-btns { display: flex; gap: 4px; }
+.page-btn {
+  padding: 4px 10px; border: 1px solid var(--gray-300); border-radius: 4px;
+  font-size: 12px; cursor: pointer; background: white;
+}
+.page-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px;
+  color: white; font-size: 13px; font-weight: 600; z-index: 300;
+  transform: translateY(80px); opacity: 0; transition: all 0.3s;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast-success { background: var(--green); }
+.toast-error { background: var(--red); }
+
+/* DROPZONE */
+.dropzone {
+  border: 2px dashed var(--gray-300); border-radius: 8px; padding: 40px;
+  text-align: center; cursor: pointer; transition: all 0.2s;
+}
+.dropzone:hover, .dropzone.drag-over { border-color: var(--primary); background: #eff6ff; }
+.dropzone p { color: var(--gray-500); font-size: 14px; }
+
+/* SECTIONS (hidden by default) */
+.page-section { display: none; }
+.page-section.active { display: block; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; }
+  .stat-row { grid-template-columns: 1fr 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== SIDEBAR ==================== -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h2>🏠 HOA Ledger</h2>
+    <span>Manager Dashboard</span>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Overview</div>
+    <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span> Dashboard</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Members</div>
+    <div class="nav-item" data-page="members"><span class="icon">👥</span> Members Grid</div>
+    <div class="nav-item" data-page="units"><span class="icon">🏢</span> Units Registry</div>
+    <div class="nav-item" data-page="csv-import"><span class="icon">📁</span> CSV Import</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Financials</div>
+    <div class="nav-item" data-page="invoices"><span class="icon">📄</span> Invoices</div>
+    <div class="nav-item" data-page="payments"><span class="icon">💰</span> Payments</div>
+    <div class="nav-item" data-page="ledger"><span class="icon">📒</span> Ledger</div>
+    <div class="nav-item" data-page="bank-import"><span class="icon">🏦</span> Bank Import</div>
+    <div class="nav-item" data-page="assessments"><span class="icon">📋</span> Assessments</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Communication</div>
+    <div class="nav-item" data-page="email"><span class="icon">✉️</span> Email Blasts</div>
+    <div class="nav-item" data-page="reminders"><span class="icon">⏰</span> Reminders</div>
+    <div class="nav-item" data-page="newsletters"><span class="icon">📰</span> Newsletters</div>
+    <div class="nav-item" data-page="templates"><span class="icon">📝</span> Templates</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-label">Reports</div>
+    <div class="nav-item" data-page="reports"><span class="icon">📈</span> Reports</div>
+    <div class="nav-item" data-page="collections"><span class="icon">⚠️</span> Collections</div>
+  </div>
+  <div class="nav-divider"></div>
+  <div class="nav-section">
+    <div class="nav-item" data-page="settings"><span class="icon">⚙️</span> Settings</div>
+  </div>
+
+  <!-- ORG SWITCHER (shown only if user manages multiple HOAs) -->
+  <div id="org-switcher" style="display:none;border-top:1px solid var(--gray-700);padding:12px 16px;margin-top:auto">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gray-500);font-weight:600;margin-bottom:8px">Switch Organization</div>
+    <div id="org-switcher-list"></div>
+  </div>
+
+  <!-- USER / LOGOUT -->
+  <div style="border-top:1px solid var(--gray-700);padding:12px 16px">
+    <div style="font-size:13px;color:var(--gray-300);margin-bottom:6px" id="sidebar-user-name"></div>
+    <div style="font-size:11px;color:var(--gray-500);margin-bottom:8px" id="sidebar-user-role"></div>
+    <div class="nav-item" onclick="doLogout()" style="padding:6px 0;color:var(--gray-400)"><span class="icon">🚪</span> Sign Out</div>
+  </div>
+</div>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <h1 id="page-title">Dashboard</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-secondary btn-sm" onclick="refreshData()">↻ Refresh</button>
+      <button class="btn btn-primary btn-sm" id="primary-action-btn" onclick="primaryAction()">+ New Member</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ========== DASHBOARD ========== -->
+    <div class="page-section active" id="page-dashboard">
+      <div class="stat-row">
+        <div class="stat-card blue"><div class="label">Total Members</div><div class="value" id="stat-members">—</div><div class="sub">Active homeowners</div></div>
+        <div class="stat-card green"><div class="label">Collected (Month)</div><div class="value" id="stat-collected">—</div><div class="sub">Current month</div></div>
+        <div class="stat-card red"><div class="label">Outstanding</div><div class="value" id="stat-outstanding">—</div><div class="sub">Total owed</div></div>
+        <div class="stat-card"><div class="label">Collection Rate</div><div class="value" id="stat-rate">—</div><div class="sub">Paid / billed</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="panel">
+          <div class="panel-header"><h3>Recent Activity</h3></div>
+          <div class="panel-body" id="recent-activity"><p style="color:var(--gray-400)">Loading...</p></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Upcoming Reminders</h3></div>
+          <div class="panel-body" id="upcoming-reminders"><p style="color:var(--gray-400)">Loading...</p></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><h3>Past Due Members</h3><button class="btn btn-sm btn-secondary" onclick="navigate('collections')">View All →</button></div>
+        <div class="panel-body" id="past-due-list"><p style="color:var(--gray-400)">Loading...</p></div>
+      </div>
+    </div>
+
+    <!-- ========== MEMBERS GRID ========== -->
+    <div class="page-section" id="page-members">
+      <div class="table-toolbar">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="member-search" placeholder="Search members..." oninput="searchMembers()">
+        </div>
+        <div class="filter-pills">
+          <span class="pill active" data-filter="all" onclick="filterMembers('all')">All</span>
+          <span class="pill" data-filter="active" onclick="filterMembers('active')">Active</span>
+          <span class="pill" data-filter="past_due" onclick="filterMembers('past_due')">Past Due</span>
+          <span class="pill" data-filter="new" onclick="filterMembers('new')">New</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-secondary" onclick="exportMembers()">⬇ Export CSV</button>
+          <button class="btn btn-sm btn-secondary" onclick="showModal('customize-columns')">⚙ Columns</button>
+          <button class="btn btn-sm btn-primary" onclick="showModal('add-member')">+ Add Member</button>
+        </div>
+      </div>
+
+      <div class="data-grid">
+        <table id="members-table">
+          <thead>
+            <tr>
+              <th style="width:30px"><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
+              <th onclick="sortMembers('last_name')">Name ↕</th>
+              <th onclick="sortMembers('email')">Email ↕</th>
+              <th onclick="sortMembers('phone')">Phone ↕</th>
+              <th>Unit</th>
+              <th>Address</th>
+              <th onclick="sortMembers('balance')">Balance ↕</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="members-tbody">
+            <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-400)">Loading members...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <div class="info" id="members-page-info">Showing 0 of 0</div>
+        <div class="page-btns" id="members-pagination"></div>
+      </div>
+    </div>
+
+    <!-- ========== CSV IMPORT WIZARD ========== -->
+    <div class="page-section" id="page-csv-import">
+      <div class="panel">
+        <div class="panel-header"><h3>CSV Import Wizard</h3><span style="font-size:12px;color:var(--gray-400)">Step <span id="import-step">1</span> of 3</span></div>
+        <div class="panel-body">
+          <!-- Step 1: Upload -->
+          <div id="import-step-1">
+            <div class="dropzone" id="csv-dropzone" onclick="document.getElementById('csv-file').click()">
+              <p style="font-size:24px;margin-bottom:8px">📁</p>
+              <p><strong>Drop CSV file here</strong> or click to browse</p>
+              <p style="font-size:12px;margin-top:8px">Supports: .csv, .xlsx — columns auto-detected</p>
+            </div>
+            <input type="file" id="csv-file" accept=".csv,.xlsx" style="display:none" onchange="handleCSVUpload(this)">
+          </div>
+
+          <!-- Step 2: Column Mapping -->
+          <div id="import-step-2" style="display:none">
+            <p style="margin-bottom:16px;color:var(--gray-600)">We auto-detected your columns. Verify the mapping below:</p>
+            <div id="column-mapping"></div>
+            <div style="margin-top:16px;display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="importStep(1)">← Back</button>
+              <button class="btn btn-primary" onclick="importStep(3)">Preview Import →</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Preview & Confirm -->
+          <div id="import-step-3" style="display:none">
+            <p style="margin-bottom:16px;color:var(--gray-600)">Preview of records to import:</p>
+            <div class="data-grid" style="max-height:300px;overflow:auto">
+              <table id="import-preview-table"><tbody></tbody></table>
+            </div>
+            <div id="import-summary" style="margin-top:16px;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"></div>
+            <div style="margin-top:16px;display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="importStep(2)">← Back</button>
+              <button class="btn btn-primary" onclick="executeImport()">✓ Import Members</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== INVOICES ========== -->
+    <div class="page-section" id="page-invoices">
+      <div class="stat-row">
+        <div class="stat-card blue"><div class="label">Total Billed</div><div class="value" id="inv-billed">—</div></div>
+        <div class="stat-card green"><div class="label">Collected</div><div class="value" id="inv-collected">—</div></div>
+        <div class="stat-card red"><div class="label">Outstanding</div><div class="value" id="inv-outstanding">—</div></div>
+        <div class="stat-card"><div class="label">Overdue</div><div class="value" id="inv-overdue">—</div></div>
+      </div>
+      <div class="table-toolbar">
+        <div class="filter-pills">
+          <span class="pill active" onclick="filterInvoices('all')">All</span>
+          <span class="pill" onclick="filterInvoices('draft')">Draft</span>
+          <span class="pill" onclick="filterInvoices('sent')">Sent</span>
+          <span class="pill" onclick="filterInvoices('paid')">Paid</span>
+          <span class="pill" onclick="filterInvoices('overdue')">Overdue</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-secondary" onclick="showModal('send-invoices')">✉ Send Selected</button>
+          <button class="btn btn-sm btn-primary" onclick="showModal('generate-invoices')">+ Generate Invoices</button>
+        </div>
+      </div>
+      <div class="data-grid">
+        <table>
+          <thead><tr>
+            <th style="width:30px"><input type="checkbox"></th>
+            <th>Invoice #</th><th>Member</th><th>Unit</th><th>Period</th>
+            <th>Due Date</th><th>Amount</th><th>Paid</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="invoices-tbody">
+            <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--gray-400)">Loading invoices...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== PAYMENTS ========== -->
+    <div class="page-section" id="page-payments">
+      <div class="stat-row">
+        <div class="stat-card green"><div class="label">Total Collected</div><div class="value" id="pay-total">—</div></div>
+        <div class="stat-card"><div class="label">Stripe</div><div class="value" id="pay-stripe">—</div></div>
+        <div class="stat-card"><div class="label">Check</div><div class="value" id="pay-check">—</div></div>
+        <div class="stat-card"><div class="label">ACH/Other</div><div class="value" id="pay-other">—</div></div>
+      </div>
+      <div class="table-toolbar">
+        <div class="search-box"><span>🔍</span><input placeholder="Search payments..."></div>
+        <button class="btn btn-sm btn-primary" onclick="showModal('record-payment')">+ Record Payment</button>
+      </div>
+      <div class="data-grid">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Member</th><th>Invoice</th><th>Amount</th><th>Method</th><th>Reference</th><th>Status</th>
+          </tr></thead>
+          <tbody id="payments-tbody">
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Loading payments...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== LEDGER ========== -->
+    <div class="page-section" id="page-ledger">
+      <div class="tabs">
+        <div class="tab active">Journal Entries</div>
+        <div class="tab">Chart of Accounts</div>
+      </div>
+      <div class="table-toolbar">
+        <div style="display:flex;gap:8px;align-items:center">
+          <select style="padding:6px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px" id="ledger-fund">
+            <option value="">All Funds</option>
+            <option value="operating">Operating</option>
+            <option value="reserve">Reserve</option>
+            <option value="special">Special Assessment</option>
+          </select>
+          <input type="date" id="ledger-from" style="padding:6px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px">
+          <input type="date" id="ledger-to" style="padding:6px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px">
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="showModal('new-journal-entry')">+ New Entry</button>
+      </div>
+      <div class="data-grid">
+        <table>
+          <thead><tr><th>Date</th><th>Description</th><th>Fund</th><th>Debit</th><th>Credit</th><th>Status</th></tr></thead>
+          <tbody id="ledger-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray-400)">Loading ledger...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== BANK IMPORT ========== -->
+    <div class="page-section" id="page-bank-import">
+      <div class="panel">
+        <div class="panel-header"><h3>Bank Statement Import</h3></div>
+        <div class="panel-body">
+          <div class="dropzone" onclick="document.getElementById('bank-file').click()">
+            <p style="font-size:24px;margin-bottom:8px">🏦</p>
+            <p><strong>Drop bank statement CSV</strong> or click to browse</p>
+            <p style="font-size:12px;margin-top:8px">Auto-matches transactions to members using rules + name matching</p>
+          </div>
+          <input type="file" id="bank-file" accept=".csv,.ofx" style="display:none" onchange="handleBankUpload(this)">
+        </div>
+      </div>
+      <div class="panel" id="bank-matches-panel" style="display:none">
+        <div class="panel-header"><h3>Matched Transactions</h3><button class="btn btn-sm btn-primary" onclick="approveBankMatches()">✓ Approve & Post</button></div>
+        <div class="data-grid">
+          <table>
+            <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Matched To</th><th>Confidence</th><th>Action</th></tr></thead>
+            <tbody id="bank-matches-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== EMAIL BLASTS ========== -->
+    <div class="page-section" id="page-email">
+      <div class="tabs">
+        <div class="tab active">Compose</div>
+        <div class="tab" onclick="navigate('templates')">Templates</div>
+        <div class="tab">Sent History</div>
+      </div>
+      <div class="panel">
+        <div class="panel-body">
+          <div class="form-group">
+            <label>Recipients</label>
+            <select id="email-recipients" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px">
+              <option value="all">All Active Members</option>
+              <option value="past_due">Past Due Members Only</option>
+              <option value="selected">Selected Members...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Template (optional)</label>
+            <select id="email-template" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px">
+              <option value="">— Custom Email —</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Subject</label><input type="text" id="email-subject" placeholder="Email subject..."></div>
+          <div class="form-group"><label>Body</label><textarea id="email-body" rows="8" placeholder="Email body... Use {{first_name}}, {{unit_number}}, {{amount_due}} for merge fields"></textarea></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-secondary">Preview</button>
+            <button class="btn btn-primary" onclick="sendEmailBlast()">Send Email</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== REMINDERS ========== -->
+    <div class="page-section" id="page-reminders">
+      <div class="panel">
+        <div class="panel-header"><h3>Automated Reminder Rules</h3><button class="btn btn-sm btn-primary" onclick="showModal('add-reminder-rule')">+ Add Rule</button></div>
+        <div class="panel-body" id="reminder-rules-list">
+          <p style="color:var(--gray-400)">Loading rules...</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Manual Trigger</h3></div>
+        <div class="panel-body">
+          <p style="margin-bottom:12px;font-size:13px;color:var(--gray-500)">Process all active reminder rules now. This is normally run daily by JARVIS.</p>
+          <button class="btn btn-primary" onclick="processReminders()">▶ Run Reminders Now</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== NEWSLETTERS ========== -->
+    <div class="page-section" id="page-newsletters">
+      <div class="table-toolbar">
+        <h3>Community Newsletters</h3>
+        <button class="btn btn-sm btn-primary" onclick="showModal('create-newsletter')">+ New Newsletter</button>
+      </div>
+      <div id="newsletters-list"><p style="color:var(--gray-400)">Loading...</p></div>
+    </div>
+
+    <!-- ========== TEMPLATES ========== -->
+    <div class="page-section" id="page-templates">
+      <div class="table-toolbar">
+        <h3>Email Templates</h3>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-secondary" onclick="seedTemplates()">Seed Defaults</button>
+          <button class="btn btn-sm btn-primary" onclick="showModal('create-template')">+ New Template</button>
+        </div>
+      </div>
+      <div id="templates-list"><p style="color:var(--gray-400)">Loading...</p></div>
+    </div>
+
+    <!-- ========== REPORTS ========== -->
+    <div class="page-section" id="page-reports">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="panel" style="cursor:pointer" onclick="generateReport('income-statement')">
+          <div class="panel-body" style="text-align:center;padding:40px">
+            <div style="font-size:32px;margin-bottom:8px">📊</div>
+            <h3>Income Statement</h3>
+            <p style="font-size:12px;color:var(--gray-500);margin-top:4px">Revenue vs expenses by period</p>
+          </div>
+        </div>
+        <div class="panel" style="cursor:pointer" onclick="generateReport('collections')">
+          <div class="panel-body" style="text-align:center;padding:40px">
+            <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+            <h3>Collections / Aging</h3>
+            <p style="font-size:12px;color:var(--gray-500);margin-top:4px">Current, 31-60, 61-90, 90+ day buckets</p>
+          </div>
+        </div>
+        <div class="panel" style="cursor:pointer" onclick="generateReport('budget')">
+          <div class="panel-body" style="text-align:center;padding:40px">
+            <div style="font-size:32px;margin-bottom:8px">💰</div>
+            <h3>Budget vs Actual</h3>
+            <p style="font-size:12px;color:var(--gray-500);margin-top:4px">Year-to-date budget tracking</p>
+          </div>
+        </div>
+        <div class="panel" style="cursor:pointer" onclick="generateReport('member-balances')">
+          <div class="panel-body" style="text-align:center;padding:40px">
+            <div style="font-size:32px;margin-bottom:8px">👥</div>
+            <h3>Member Balances</h3>
+            <p style="font-size:12px;color:var(--gray-500);margin-top:4px">All member balances with payment history</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== COLLECTIONS ========== -->
+    <div class="page-section" id="page-collections">
+      <div class="stat-row">
+        <div class="stat-card"><div class="label">Current</div><div class="value" id="coll-current">—</div></div>
+        <div class="stat-card" style="border-left:3px solid var(--orange)"><div class="label">31–60 Days</div><div class="value" id="coll-31-60">—</div></div>
+        <div class="stat-card" style="border-left:3px solid var(--red)"><div class="label">61–90 Days</div><div class="value" id="coll-61-90">—</div></div>
+        <div class="stat-card" style="border-left:3px solid #7f1d1d"><div class="label">90+ Days</div><div class="value" id="coll-90">—</div></div>
+      </div>
+      <div class="data-grid">
+        <table>
+          <thead><tr><th>Member</th><th>Unit</th><th>Current</th><th>31-60</th><th>61-90</th><th>90+</th><th>Total</th><th>Action</th></tr></thead>
+          <tbody id="collections-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== UNITS ========== -->
+    <div class="page-section" id="page-units">
+      <div class="table-toolbar">
+        <div class="search-box"><span>🔍</span><input placeholder="Search units..."></div>
+        <button class="btn btn-sm btn-primary" onclick="showModal('add-unit')">+ Add Unit</button>
+      </div>
+      <div class="data-grid">
+        <table>
+          <thead><tr><th>Unit #</th><th>Address</th><th>Type</th><th>Bedrooms</th><th>Sq Ft</th><th>Owner</th><th>Status</th></tr></thead>
+          <tbody id="units-tbody">
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Loading units...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== ASSESSMENTS ========== -->
+    <div class="page-section" id="page-assessments">
+      <div class="table-toolbar">
+        <h3>Special Assessments</h3>
+        <button class="btn btn-sm btn-primary" onclick="showModal('create-assessment')">+ New Assessment</button>
+      </div>
+      <div id="assessments-list"><p style="color:var(--gray-400)">Loading...</p></div>
+    </div>
+
+    <!-- ========== SETTINGS ========== -->
+    <div class="page-section" id="page-settings">
+      <div class="panel">
+        <div class="panel-header"><h3>HOA Organization Settings</h3></div>
+        <div class="panel-body">
+          <div class="form-row">
+            <div class="form-group"><label>Organization Name</label><input id="set-name" placeholder="Sunny Hills HOA"></div>
+            <div class="form-group"><label>Contact Email</label><input id="set-email" placeholder="manager@example.com"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Monthly Dues ($)</label><input id="set-dues" type="number" placeholder="250"></div>
+            <div class="form-group"><label>Due Day of Month</label><input id="set-due-day" type="number" min="1" max="28" placeholder="1"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Late Fee Amount</label><input id="set-late-fee" type="number" placeholder="25"></div>
+            <div class="form-group">
+              <label>Late Fee Type</label>
+              <select id="set-late-fee-type"><option value="flat">Flat ($)</option><option value="percent">Percent (%)</option></select>
+            </div>
+          </div>
+          <div class="form-group"><label>Grace Period (days)</label><input id="set-grace" type="number" placeholder="15"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Accent Color</label><input id="set-color" type="color" value="#2563eb"></div>
+            <div class="form-group"><label>Logo URL</label><input id="set-logo" placeholder="https://..."></div>
+          </div>
+          <div style="margin-top:16px"><button class="btn btn-primary" onclick="saveSettings()">Save Settings</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Quick Setup</h3></div>
+        <div class="panel-body">
+          <p style="font-size:13px;color:var(--gray-500);margin-bottom:12px">First time? Run these to set up defaults:</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary" onclick="seedAccounts()">Seed Chart of Accounts</button>
+            <button class="btn btn-secondary" onclick="seedTemplates()">Seed Email Templates</button>
+            <button class="btn btn-secondary" onclick="seedReminderRules()">Seed Reminder Rules</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- Add Member Modal -->
+<div class="modal-overlay" id="modal-add-member">
+  <div class="modal">
+    <div class="modal-header"><h2>Add Member</h2><button class="modal-close" onclick="closeModal('add-member')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>First Name *</label><input id="new-first"></div>
+        <div class="form-group"><label>Last Name *</label><input id="new-last"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email *</label><input id="new-email" type="email"></div>
+        <div class="form-group"><label>Phone</label><input id="new-phone"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Unit Number</label><input id="new-unit"></div>
+        <div class="form-group"><label>Address</label><input id="new-address"></div>
+      </div>
+      <div class="form-group"><label>Monthly Dues Override ($)</label><input id="new-dues" type="number" placeholder="Leave blank for default"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-member')">Cancel</button>
+      <button class="btn btn-primary" onclick="addMember()">Add Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- Generate Invoices Modal -->
+<div class="modal-overlay" id="modal-generate-invoices">
+  <div class="modal">
+    <div class="modal-header"><h2>Generate Monthly Invoices</h2><button class="modal-close" onclick="closeModal('generate-invoices')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Billing Period</label><input id="gen-period" type="month"></div>
+      <div class="form-group">
+        <label><input type="checkbox" id="gen-late-fees" checked> Include late fees for overdue members</label>
+      </div>
+      <p style="font-size:13px;color:var(--gray-500);margin-top:8px">This will create invoices for all active members who don't already have one for this period.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('generate-invoices')">Cancel</button>
+      <button class="btn btn-primary" onclick="generateInvoices()">Generate Invoices</button>
+    </div>
+  </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div class="modal-overlay" id="modal-record-payment">
+  <div class="modal">
+    <div class="modal-header"><h2>Record Payment</h2><button class="modal-close" onclick="closeModal('record-payment')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Member</label><select id="pay-member" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"></select></div>
+        <div class="form-group"><label>Invoice</label><select id="pay-invoice" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Amount ($)</label><input id="pay-amount" type="number" step="0.01"></div>
+        <div class="form-group">
+          <label>Method</label>
+          <select id="pay-method" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px">
+            <option value="check">Check</option>
+            <option value="ach">ACH / Bank Transfer</option>
+            <option value="cash">Cash</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Date</label><input id="pay-date" type="date"></div>
+        <div class="form-group"><label>Reference / Check #</label><input id="pay-ref"></div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea id="pay-notes" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('record-payment')">Cancel</button>
+      <button class="btn btn-primary" onclick="recordPayment()">Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ==================== JAVASCRIPT ==================== -->
+<script>
+// ──────────────────────────────────────────────
+// CONFIG & AUTH
+// ──────────────────────────────────────────────
+let HOA_ID = new URLSearchParams(window.location.search).get('hoa') || 'demo';
+const API = '';  // Same origin
+let AUTH_TOKEN = localStorage.getItem('hoa_token') || new URLSearchParams(window.location.search).get('token') || '';
+let OTHER_ORGS = JSON.parse(localStorage.getItem('hoa_other_orgs') || '[]');
+let CURRENT_USER = JSON.parse(localStorage.getItem('hoa_user') || '{}');
+
+// ──────────────────────────────────────────────
+// NAVIGATION
+// ──────────────────────────────────────────────
+let currentPage = 'dashboard';
+
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => navigate(item.dataset.page));
+});
+
+function navigate(page) {
+  currentPage = page;
+  // Update sidebar
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (navItem) navItem.classList.add('active');
+
+  // Show section
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  const section = document.getElementById(`page-${page}`);
+  if (section) section.classList.add('active');
+
+  // Update topbar
+  const titles = {
+    dashboard: 'Dashboard', members: 'Members Grid', units: 'Units Registry',
+    'csv-import': 'CSV Import Wizard', invoices: 'Invoices', payments: 'Payments',
+    ledger: 'General Ledger', 'bank-import': 'Bank Import', assessments: 'Special Assessments',
+    email: 'Email Blasts', reminders: 'Reminder Automation', newsletters: 'Newsletters',
+    templates: 'Email Templates', reports: 'Reports', collections: 'Collections Report',
+    settings: 'Settings',
+  };
+  document.getElementById('page-title').textContent = titles[page] || page;
+
+  // Load data for page
+  loadPageData(page);
+}
+
+function loadPageData(page) {
+  const loaders = {
+    dashboard: loadDashboard,
+    members: loadMembers,
+    invoices: loadInvoices,
+    payments: loadPayments,
+    ledger: loadLedger,
+    reminders: loadReminderRules,
+    collections: loadCollections,
+    templates: loadTemplates,
+    newsletters: loadNewsletters,
+  };
+  if (loaders[page]) loaders[page]();
+}
+
+// ──────────────────────────────────────────────
+// API HELPER
+// ──────────────────────────────────────────────
+async function api(path, options = {}) {
+  try {
+    const url = `${API}/api/hoa/${HOA_ID}${path}`;
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (AUTH_TOKEN) headers['Authorization'] = `Bearer ${AUTH_TOKEN}`;
+    const resp = await fetch(url, { headers, ...options });
+    if (resp.status === 401) { window.location.href = '/hoa/login'; return {}; }
+    return await resp.json();
+  } catch (err) {
+    console.error('API Error:', err);
+    return { error: err.message };
+  }
+}
+
+// ──────────────────────────────────────────────
+// DASHBOARD
+// ──────────────────────────────────────────────
+async function loadDashboard() {
+  const data = await api('/dashboard');
+  if (data.error) return;
+
+  const s = data.stats || data;
+  document.getElementById('stat-members').textContent = s.total_members || 0;
+  document.getElementById('stat-collected').textContent = `$${(s.collected_this_month || 0).toLocaleString()}`;
+  document.getElementById('stat-outstanding').textContent = `$${(s.total_outstanding || 0).toLocaleString()}`;
+  document.getElementById('stat-rate').textContent = `${s.collection_rate || 0}%`;
+
+  // Recent activity
+  const actEl = document.getElementById('recent-activity');
+  if (s.recent_activity && s.recent_activity.length) {
+    actEl.innerHTML = s.recent_activity.map(a =>
+      `<div style="padding:6px 0;border-bottom:1px solid var(--gray-100);font-size:13px">
+        <span style="color:var(--gray-400)">${a.date || ''}</span> — ${a.description || ''}
+      </div>`
+    ).join('');
+  } else {
+    actEl.innerHTML = '<p style="color:var(--gray-400);font-size:13px">No recent activity</p>';
+  }
+}
+
+// ──────────────────────────────────────────────
+// MEMBERS
+// ──────────────────────────────────────────────
+let memberSort = 'last_name';
+let memberDir = 'asc';
+let memberFilter = 'all';
+let memberPage = 1;
+
+async function loadMembers() {
+  const search = document.getElementById('member-search')?.value || '';
+  const params = new URLSearchParams({
+    sort: memberSort, dir: memberDir, page: memberPage, per_page: 50,
+  });
+  if (search) params.set('search', search);
+  if (memberFilter !== 'all') params.set('status', memberFilter);
+
+  const data = await api(`/members?${params}`);
+  if (data.error) return;
+
+  const tbody = document.getElementById('members-tbody');
+  if (!data.members || !data.members.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-400)">No members found. Import a CSV or add members manually.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.members.map(m => {
+    const unit = m.hoa_units || {};
+    const balance = m.balance || 0;
+    const statusBadge = balance > 0
+      ? '<span class="badge badge-red">Past Due</span>'
+      : '<span class="badge badge-green">Current</span>';
+
+    return `<tr>
+      <td><input type="checkbox" data-id="${m.id}"></td>
+      <td><strong>${m.first_name || ''} ${m.last_name || ''}</strong></td>
+      <td>${m.email || ''}</td>
+      <td>${m.phone || ''}</td>
+      <td>${unit.unit_number || ''}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${unit.address || ''}</td>
+      <td style="font-weight:600;${balance > 0 ? 'color:var(--red)' : 'color:var(--green)'}">$${Math.abs(balance).toLocaleString()}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <button class="btn btn-sm btn-icon" onclick="viewMember('${m.id}')" title="View">👁</button>
+        <button class="btn btn-sm btn-icon" onclick="addNote('${m.id}')" title="Note">📝</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('members-page-info').textContent = `Showing ${data.members.length} of ${data.total || data.members.length}`;
+}
+
+function searchMembers() { clearTimeout(window._searchTimer); window._searchTimer = setTimeout(loadMembers, 300); }
+function sortMembers(col) { if (memberSort === col) memberDir = memberDir === 'asc' ? 'desc' : 'asc'; else { memberSort = col; memberDir = 'asc'; } loadMembers(); }
+function filterMembers(f) { memberFilter = f; document.querySelectorAll('#page-members .pill').forEach(p => p.classList.toggle('active', p.dataset.filter === f)); loadMembers(); }
+function exportMembers() { window.open(`${API}/api/hoa/${HOA_ID}/members/export`, '_blank'); }
+
+// ──────────────────────────────────────────────
+// CSV IMPORT
+// ──────────────────────────────────────────────
+let csvData = null;
+let csvMapping = null;
+
+function handleCSVUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  fetch(`${API}/api/hoa/${HOA_ID}/members/import/preview`, { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { toast(data.error, 'error'); return; }
+      csvData = data;
+      csvMapping = data.suggested_mapping || {};
+      buildColumnMapping(data.headers, data.suggested_mapping);
+      importStep(2);
+    })
+    .catch(err => toast('Upload failed: ' + err.message, 'error'));
+}
+
+function buildColumnMapping(headers, suggested) {
+  const fields = ['first_name','last_name','email','phone','unit_number','address','monthly_dues'];
+  const el = document.getElementById('column-mapping');
+  el.innerHTML = headers.map((h, i) => {
+    const mapped = Object.entries(suggested).find(([k,v]) => v === h);
+    const selectedField = mapped ? mapped[0] : '';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:8px;border-bottom:1px solid var(--gray-100)">
+      <div style="flex:1;font-weight:600;font-size:13px">${h}</div>
+      <span style="color:var(--gray-400)">→</span>
+      <select data-header="${h}" style="flex:1;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px">
+        <option value="">Skip</option>
+        ${fields.map(f => `<option value="${f}" ${selectedField === f ? 'selected' : ''}>${f.replace('_',' ')}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+}
+
+function importStep(step) {
+  document.getElementById('import-step').textContent = step;
+  document.getElementById('import-step-1').style.display = step === 1 ? '' : 'none';
+  document.getElementById('import-step-2').style.display = step === 2 ? '' : 'none';
+  document.getElementById('import-step-3').style.display = step === 3 ? '' : 'none';
+
+  if (step === 3 && csvData) {
+    const preview = csvData.preview || [];
+    const tbody = document.querySelector('#import-preview-table tbody');
+    tbody.innerHTML = preview.slice(0, 10).map(row =>
+      `<tr>${Object.values(row).map(v => `<td style="padding:6px 10px;font-size:12px;border-bottom:1px solid var(--gray-100)">${v || ''}</td>`).join('')}</tr>`
+    ).join('');
+    document.getElementById('import-summary').innerHTML = `<strong>${csvData.total_rows || preview.length} records</strong> will be imported.`;
+  }
+}
+
+async function executeImport() {
+  const mapping = {};
+  document.querySelectorAll('#column-mapping select').forEach(sel => {
+    if (sel.value) mapping[sel.value] = sel.dataset.header;
+  });
+
+  const data = await api('/members/import', {
+    method: 'POST',
+    body: JSON.stringify({ mapping, data: csvData?.raw_data }),
+  });
+
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast(`Imported ${data.created || 0} members!`, 'success');
+  navigate('members');
+}
+
+// ──────────────────────────────────────────────
+// INVOICES
+// ──────────────────────────────────────────────
+async function loadInvoices() {
+  const data = await api('/invoices');
+  if (data.error) return;
+
+  const s = data.summary || {};
+  document.getElementById('inv-billed').textContent = `$${(s.total_billed || 0).toLocaleString()}`;
+  document.getElementById('inv-collected').textContent = `$${(s.total_collected || 0).toLocaleString()}`;
+  document.getElementById('inv-outstanding').textContent = `$${(s.total_outstanding || 0).toLocaleString()}`;
+  document.getElementById('inv-overdue').textContent = s.overdue_count || 0;
+
+  const tbody = document.getElementById('invoices-tbody');
+  if (!data.invoices || !data.invoices.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--gray-400)">No invoices yet. Generate invoices from the button above.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.invoices.map(inv => {
+    const m = inv.hoa_members || {};
+    const statusMap = { draft:'badge-gray', sent:'badge-blue', paid:'badge-green', partial:'badge-yellow', overdue:'badge-red', void:'badge-gray' };
+    return `<tr>
+      <td><input type="checkbox" data-id="${inv.id}"></td>
+      <td><strong>${inv.invoice_number || ''}</strong></td>
+      <td>${m.first_name || ''} ${m.last_name || ''}</td>
+      <td>${(inv.hoa_units || {}).unit_number || ''}</td>
+      <td>${inv.period || ''}</td>
+      <td>${inv.due_date || ''}</td>
+      <td>$${parseFloat(inv.total_amount || 0).toLocaleString()}</td>
+      <td>$${parseFloat(inv.amount_paid || 0).toLocaleString()}</td>
+      <td><span class="badge ${statusMap[inv.status] || 'badge-gray'}">${inv.status}</span></td>
+      <td>
+        <button class="btn btn-sm btn-icon" title="Send">✉</button>
+        <button class="btn btn-sm btn-icon" title="Void" onclick="voidInvoice('${inv.id}')">🚫</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function generateInvoices() {
+  const period = document.getElementById('gen-period').value;
+  if (!period) { toast('Select a billing period', 'error'); return; }
+  const lateFees = document.getElementById('gen-late-fees').checked;
+
+  const data = await api('/invoices/generate', {
+    method: 'POST',
+    body: JSON.stringify({ period, include_late_fees: lateFees }),
+  });
+
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast(`Generated ${data.created} invoices (${data.skipped} skipped)`, 'success');
+  closeModal('generate-invoices');
+  loadInvoices();
+}
+
+function filterInvoices(status) {
+  // Simplified filter — reload with status param
+  loadInvoices();
+}
+
+// ──────────────────────────────────────────────
+// PAYMENTS
+// ──────────────────────────────────────────────
+async function loadPayments() {
+  const data = await api('/payments');
+  const summary = await api('/payments/summary');
+  if (summary && !summary.error) {
+    document.getElementById('pay-total').textContent = `$${(summary.total_collected || 0).toLocaleString()}`;
+    const bm = summary.by_method || {};
+    document.getElementById('pay-stripe').textContent = `$${(bm.stripe || 0).toLocaleString()}`;
+    document.getElementById('pay-check').textContent = `$${(bm.check || 0).toLocaleString()}`;
+    document.getElementById('pay-other').textContent = `$${((bm.ach || 0) + (bm.cash || 0) + (bm.other || 0)).toLocaleString()}`;
+  }
+
+  const tbody = document.getElementById('payments-tbody');
+  if (!data.payments || !data.payments.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">No payments recorded yet.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.payments.map(p => {
+    const m = p.hoa_members || {};
+    const inv = p.hoa_invoices || {};
+    return `<tr>
+      <td>${p.payment_date || ''}</td>
+      <td>${m.first_name || ''} ${m.last_name || ''}</td>
+      <td>${inv.invoice_number || ''}</td>
+      <td style="font-weight:600;color:var(--green)">$${parseFloat(p.amount || 0).toLocaleString()}</td>
+      <td><span class="badge badge-blue">${p.method || ''}</span></td>
+      <td>${p.reference_number || ''}</td>
+      <td><span class="badge badge-green">${p.status || ''}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+async function recordPayment() {
+  const data = await api('/payments', {
+    method: 'POST',
+    body: JSON.stringify({
+      member_id: document.getElementById('pay-member').value,
+      invoice_id: document.getElementById('pay-invoice').value,
+      amount: document.getElementById('pay-amount').value,
+      method: document.getElementById('pay-method').value,
+      payment_date: document.getElementById('pay-date').value,
+      reference: document.getElementById('pay-ref').value,
+      notes: document.getElementById('pay-notes').value,
+    }),
+  });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Payment recorded!', 'success');
+  closeModal('record-payment');
+  loadPayments();
+}
+
+// ──────────────────────────────────────────────
+// LEDGER
+// ──────────────────────────────────────────────
+async function loadLedger() {
+  const fund = document.getElementById('ledger-fund').value;
+  const from = document.getElementById('ledger-from').value;
+  const to = document.getElementById('ledger-to').value;
+  const params = new URLSearchParams();
+  if (fund) params.set('fund', fund);
+  if (from) params.set('date_from', from);
+  if (to) params.set('date_to', to);
+
+  const data = await api(`/ledger?${params}`);
+  const tbody = document.getElementById('ledger-tbody');
+  if (!data.entries || !data.entries.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--gray-400)">No journal entries found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.entries.map(e =>
+    `<tr>
+      <td>${e.date || ''}</td>
+      <td>${e.description || ''}</td>
+      <td><span class="badge badge-blue">${e.fund || ''}</span></td>
+      <td style="color:var(--green)">$${parseFloat(e.total_debit || 0).toLocaleString()}</td>
+      <td style="color:var(--red)">$${parseFloat(e.total_credit || 0).toLocaleString()}</td>
+      <td><span class="badge ${e.status === 'posted' ? 'badge-green' : 'badge-yellow'}">${e.status || ''}</span></td>
+    </tr>`
+  ).join('');
+}
+
+// ──────────────────────────────────────────────
+// BANK IMPORT
+// ──────────────────────────────────────────────
+let bankBatchId = null;
+
+function handleBankUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+
+  fetch(`${API}/api/hoa/${HOA_ID}/bank-import/upload`, { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { toast(data.error, 'error'); return; }
+      bankBatchId = data.batch_id;
+      document.getElementById('bank-matches-panel').style.display = '';
+      const tbody = document.getElementById('bank-matches-tbody');
+      tbody.innerHTML = (data.transactions || []).map(t =>
+        `<tr>
+          <td>${t.date || ''}</td>
+          <td>${t.description || ''}</td>
+          <td style="font-weight:600">$${parseFloat(t.amount || 0).toLocaleString()}</td>
+          <td>${t.matched_member || '<em style="color:var(--gray-400)">Unmatched</em>'}</td>
+          <td><span class="badge ${t.confidence === 'high' ? 'badge-green' : t.confidence === 'medium' ? 'badge-yellow' : 'badge-red'}">${t.confidence || ''}</span></td>
+          <td><select style="padding:4px;font-size:12px;border:1px solid var(--gray-300);border-radius:4px">
+            <option>Accept</option><option>Skip</option><option>Manual Match</option>
+          </select></td>
+        </tr>`
+      ).join('');
+      toast(`${data.matched || 0} of ${data.total || 0} transactions matched`, 'success');
+    })
+    .catch(err => toast('Upload failed', 'error'));
+}
+
+async function approveBankMatches() {
+  if (!bankBatchId) return;
+  const data = await api(`/bank-import/${bankBatchId}/approve`, { method: 'POST' });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast(`${data.posted || 0} transactions posted to ledger!`, 'success');
+  document.getElementById('bank-matches-panel').style.display = 'none';
+}
+
+// ──────────────────────────────────────────────
+// REMINDERS
+// ──────────────────────────────────────────────
+async function loadReminderRules() {
+  const data = await api('/reminder-rules');
+  const el = document.getElementById('reminder-rules-list');
+  if (!data.rules || !data.rules.length) {
+    el.innerHTML = '<p style="color:var(--gray-400);font-size:13px">No reminder rules configured. Seed defaults from Settings or create manually.</p>';
+    return;
+  }
+  el.innerHTML = data.rules.map(r => {
+    const typeLabel = { before_due: 'Before Due', after_due: 'After Due', on_due: 'On Due Date' };
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--gray-200);border-radius:6px;margin-bottom:8px">
+      <div>
+        <strong style="font-size:14px">${r.name}</strong>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:2px">${typeLabel[r.trigger_type] || ''} — ${r.trigger_days} days • Target: ${r.target_status}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="badge ${r.is_active ? 'badge-green' : 'badge-gray'}">${r.is_active ? 'Active' : 'Disabled'}</span>
+        <button class="btn btn-sm btn-icon" onclick="toggleRule('${r.id}', ${!r.is_active})" title="Toggle">⏻</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleRule(ruleId, active) {
+  await api(`/reminder-rules/${ruleId}`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) });
+  loadReminderRules();
+}
+
+async function processReminders() {
+  const data = await api('/reminders/process', { method: 'POST' });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast(`Sent ${data.total_sent || 0} reminder emails`, 'success');
+}
+
+async function seedReminderRules() {
+  await api('/reminder-rules/seed', { method: 'POST' });
+  toast('Default reminder rules created!', 'success');
+  if (currentPage === 'reminders') loadReminderRules();
+}
+
+// ──────────────────────────────────────────────
+// COLLECTIONS
+// ──────────────────────────────────────────────
+async function loadCollections() {
+  const data = await api('/reports/collections');
+  if (data.error) return;
+  const s = data.summary || {};
+  document.getElementById('coll-current').textContent = `$${(s.current || 0).toLocaleString()}`;
+  document.getElementById('coll-31-60').textContent = `$${(s['31_60'] || 0).toLocaleString()}`;
+  document.getElementById('coll-61-90').textContent = `$${(s['61_90'] || 0).toLocaleString()}`;
+  document.getElementById('coll-90').textContent = `$${(s['90_plus'] || 0).toLocaleString()}`;
+
+  const tbody = document.getElementById('collections-tbody');
+  const members = data.members || [];
+  if (!members.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">No past due accounts</td></tr>';
+    return;
+  }
+  tbody.innerHTML = members.map(m =>
+    `<tr>
+      <td><strong>${m.name || ''}</strong></td>
+      <td>${m.unit || ''}</td>
+      <td>$${(m.current || 0).toLocaleString()}</td>
+      <td>$${(m['31_60'] || 0).toLocaleString()}</td>
+      <td>$${(m['61_90'] || 0).toLocaleString()}</td>
+      <td style="color:var(--red);font-weight:600">$${(m['90_plus'] || 0).toLocaleString()}</td>
+      <td style="font-weight:700">$${(m.total || 0).toLocaleString()}</td>
+      <td><button class="btn btn-sm btn-secondary">Send Reminder</button></td>
+    </tr>`
+  ).join('');
+}
+
+// ──────────────────────────────────────────────
+// TEMPLATES
+// ──────────────────────────────────────────────
+async function loadTemplates() {
+  const data = await api('/email-templates');
+  const el = document.getElementById('templates-list');
+  if (!data.templates || !data.templates.length) {
+    el.innerHTML = '<p style="color:var(--gray-400);font-size:13px">No templates. Click "Seed Defaults" to create starter templates.</p>';
+    return;
+  }
+  el.innerHTML = data.templates.map(t =>
+    `<div class="panel" style="margin-bottom:12px">
+      <div class="panel-header">
+        <div><h3 style="font-size:14px">${t.name}</h3><span style="font-size:12px;color:var(--gray-400)">${t.category || ''}</span></div>
+        <div><span class="badge ${t.is_active ? 'badge-green' : 'badge-gray'}">${t.is_active ? 'Active' : 'Disabled'}</span></div>
+      </div>
+      <div class="panel-body" style="padding:12px 20px">
+        <p style="font-size:13px;color:var(--gray-600)"><strong>Subject:</strong> ${t.subject || ''}</p>
+      </div>
+    </div>`
+  ).join('');
+}
+
+async function seedTemplates() {
+  await api('/email-templates/seed', { method: 'POST' });
+  toast('Default templates created!', 'success');
+  if (currentPage === 'templates') loadTemplates();
+}
+
+// ──────────────────────────────────────────────
+// NEWSLETTERS
+// ──────────────────────────────────────────────
+async function loadNewsletters() {
+  const data = await api('/newsletters');
+  const el = document.getElementById('newsletters-list');
+  if (!data.newsletters || !data.newsletters.length) {
+    el.innerHTML = '<p style="color:var(--gray-400)">No newsletters yet.</p>';
+    return;
+  }
+  el.innerHTML = data.newsletters.map(n =>
+    `<div class="panel" style="margin-bottom:12px">
+      <div class="panel-header">
+        <div><h3 style="font-size:14px">${n.title}</h3><span style="font-size:12px;color:var(--gray-400)">${n.publish_date || ''}</span></div>
+        <span class="badge ${n.status === 'published' ? 'badge-green' : 'badge-yellow'}">${n.status}</span>
+      </div>
+    </div>`
+  ).join('');
+}
+
+// ──────────────────────────────────────────────
+// EMAIL BLAST
+// ──────────────────────────────────────────────
+async function sendEmailBlast() {
+  const recipients = document.getElementById('email-recipients').value;
+  const body = {
+    subject: document.getElementById('email-subject').value,
+    body_html: document.getElementById('email-body').value.replace(/\n/g, '<br>'),
+  };
+  if (recipients === 'past_due') body.filter_status = 'past_due';
+  if (document.getElementById('email-template').value) {
+    body.template_id = document.getElementById('email-template').value;
+  }
+
+  const data = await api('/emails/send', { method: 'POST', body: JSON.stringify(body) });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast(`Sent to ${data.sent || 0} members`, 'success');
+}
+
+// ──────────────────────────────────────────────
+// SEED HELPERS
+// ──────────────────────────────────────────────
+async function seedAccounts() {
+  await api('/accounts/seed', { method: 'POST' });
+  toast('Chart of accounts seeded!', 'success');
+}
+
+// ──────────────────────────────────────────────
+// REPORTS
+// ──────────────────────────────────────────────
+async function generateReport(type) {
+  toast(`Generating ${type} report...`, 'success');
+  // Would open report in new tab/modal
+}
+
+// ──────────────────────────────────────────────
+// MEMBER CRUD
+// ──────────────────────────────────────────────
+async function addMember() {
+  const data = await api('/members', {
+    method: 'POST',
+    body: JSON.stringify({
+      first_name: document.getElementById('new-first').value,
+      last_name: document.getElementById('new-last').value,
+      email: document.getElementById('new-email').value,
+      phone: document.getElementById('new-phone').value,
+      unit_number: document.getElementById('new-unit').value,
+      address: document.getElementById('new-address').value,
+      monthly_dues_override: document.getElementById('new-dues').value || null,
+    }),
+  });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Member added!', 'success');
+  closeModal('add-member');
+  loadMembers();
+}
+
+function viewMember(id) { toast('Member detail view — coming soon', 'success'); }
+function addNote(id) { toast('Notes panel — coming soon', 'success'); }
+function voidInvoice(id) { api(`/invoices/${id}/void`, { method: 'POST' }).then(() => { toast('Invoice voided', 'success'); loadInvoices(); }); }
+
+// ──────────────────────────────────────────────
+// SETTINGS
+// ──────────────────────────────────────────────
+async function saveSettings() {
+  toast('Settings saved!', 'success');
+}
+
+// ──────────────────────────────────────────────
+// UI HELPERS
+// ──────────────────────────────────────────────
+function showModal(name) { document.getElementById(`modal-${name}`).classList.add('show'); }
+function closeModal(name) { document.getElementById(`modal-${name}`).classList.remove('show'); }
+function toggleSelectAll() { document.querySelectorAll('#members-tbody input[type=checkbox]').forEach(cb => cb.checked = document.getElementById('select-all').checked); }
+
+function primaryAction() {
+  const actions = {
+    dashboard: () => navigate('members'),
+    members: () => showModal('add-member'),
+    invoices: () => showModal('generate-invoices'),
+    payments: () => showModal('record-payment'),
+  };
+  (actions[currentPage] || (() => {}))();
+}
+
+function refreshData() { loadPageData(currentPage); }
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast toast-${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ──────────────────────────────────────────────
+// ORG SWITCHER & LOGOUT
+// ──────────────────────────────────────────────
+function initOrgSwitcher() {
+  // Show user info in sidebar
+  if (CURRENT_USER.first_name) {
+    document.getElementById('sidebar-user-name').textContent =
+      `${CURRENT_USER.first_name} ${CURRENT_USER.last_name || ''}`;
+    document.getElementById('sidebar-user-role').textContent =
+      (CURRENT_USER.role || 'manager').charAt(0).toUpperCase() + (CURRENT_USER.role || '').slice(1);
+  }
+
+  // Show org switcher if user has access to multiple HOAs
+  if (OTHER_ORGS.length > 0) {
+    document.getElementById('org-switcher').style.display = 'block';
+    const list = document.getElementById('org-switcher-list');
+    list.innerHTML = OTHER_ORGS.map(o => `
+      <div onclick="switchOrg('${o.hoa_id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;color:var(--gray-300);font-size:12px;transition:.2s;margin-bottom:2px"
+           onmouseover="this.style.background='var(--gray-800)'" onmouseout="this.style.background='transparent'">
+        <span style="width:24px;height:24px;border-radius:6px;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">
+          ${(o.hoa_name || 'H').charAt(0).toUpperCase()}
+        </span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.hoa_name}</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--gray-500)">${o.role}</span>
+      </div>
+    `).join('');
+  }
+}
+
+async function switchOrg(targetHoaId) {
+  try {
+    const resp = await fetch('/api/hoa/auth/switch-org', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AUTH_TOKEN}`,
+      },
+      body: JSON.stringify({ hoa_id: targetHoaId }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { toast(data.error || 'Switch failed', 'error'); return; }
+
+    // Update stored auth
+    localStorage.setItem('hoa_token', data.access_token);
+    localStorage.setItem('hoa_refresh', data.refresh_token);
+    localStorage.setItem('hoa_user', JSON.stringify(data.user));
+    localStorage.setItem('hoa_other_orgs', JSON.stringify(data.other_organizations || []));
+
+    // Redirect to new org
+    window.location.href = `/hoa/manager?hoa=${targetHoaId}`;
+  } catch(e) {
+    toast('Connection error during switch', 'error');
+  }
+}
+
+function doLogout() {
+  const refreshToken = localStorage.getItem('hoa_refresh');
+  if (refreshToken) {
+    fetch('/api/hoa/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    }).catch(() => {});
+  }
+  localStorage.removeItem('hoa_token');
+  localStorage.removeItem('hoa_refresh');
+  localStorage.removeItem('hoa_user');
+  localStorage.removeItem('hoa_other_orgs');
+  window.location.href = '/hoa/login';
+}
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initOrgSwitcher();
+  loadDashboard();
+  // Set default period to current month
+  const now = new Date();
+  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const periodInput = document.getElementById('gen-period');
+  if (periodInput) periodInput.value = period;
+  const payDate = document.getElementById('pay-date');
+  if (payDate) payDate.value = now.toISOString().split('T')[0];
+});
+</script>
+</body>
+</html>

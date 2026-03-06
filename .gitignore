@@ -1,0 +1,14 @@
+.env
+*.pyc
+__pycache__/
+.DS_Store
+node_modules/
+venv/
+*.egg-info/
+dist/
+build/
+vault.env
+hoa-login-test.html
+start_hoa.sh
+requirements-hoa.txt
+hoa_complete_setup.sql

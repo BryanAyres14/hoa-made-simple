@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOA Ledger — JARVIS Command Center</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--yellow:#eab308;--text:#f8fafc;--muted:#94a3b8;--hover:#2d3a52}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:260px;background:var(--card);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0;display:flex;flex-direction:column}
+.sidebar h1{font-size:14px;padding:12px 20px;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
+.sidebar .brand{padding:16px 20px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.sidebar .brand h2{font-size:18px;font-weight:700}
+.sidebar .brand span{font-size:12px;color:var(--muted)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;color:var(--muted);transition:.2s;font-size:14px;border-left:3px solid transparent}
+.nav-item:hover{background:var(--hover);color:var(--text)}
+.nav-item.active{background:var(--hover);color:var(--accent);border-left-color:var(--accent)}
+.main{flex:1;padding:24px;overflow-y:auto}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.topbar h2{font-size:22px}
+.topbar .admin-badge{background:var(--accent);padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.stat-card .label{font-size:12px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.stat-card .value{font-size:28px;font-weight:700}
+.stat-card .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.stat-card.green .value{color:var(--green)}
+.stat-card.red .value{color:var(--red)}
+.stat-card.blue .value{color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.card h3{font-size:16px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:var(--muted);text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:14px}
+tr:hover{background:var(--hover)}
+.badge{padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600}
+.badge.green{background:#16a34a33;color:var(--green)}
+.badge.red{background:#ef444433;color:var(--red)}
+.badge.yellow{background:#eab30833;color:var(--yellow)}
+.badge.blue{background:#3b82f633;color:var(--accent)}
+.btn{padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text);transition:.2s}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:white}
+.btn.sm{padding:4px 10px;font-size:12px}
+.actions{display:flex;gap:8px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.full{grid-template-columns:1fr}
+.form-row label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+.form-row input,.form-row select{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:14px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:560px;max-height:80vh;overflow-y:auto}
+.modal h3{margin-bottom:16px}
+.page{display:none}.page.active{display:block}
+.toast{position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:8px;font-size:14px;z-index:200;animation:slideIn .3s}
+.toast.success{background:var(--green);color:white}
+.toast.error{background:var(--red);color:white}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.health-bar{height:8px;border-radius:4px;background:var(--border);overflow:hidden;margin-top:8px}
+.health-bar .fill{height:100%;border-radius:4px;transition:width .3s}
+.activity-item{padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between}
+.activity-item .action{font-weight:500}
+.activity-item .meta{color:var(--muted);font-size:12px}
+.empty{text-align:center;padding:40px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="brand">
+      <h2>HOA Ledger</h2>
+      <span>JARVIS Command Center</span>
+    </div>
+    <h1>Platform</h1>
+    <div class="nav-item active" onclick="showPage('dashboard')">📊 Dashboard</div>
+    <div class="nav-item" onclick="showPage('orgs')">🏢 Organizations</div>
+    <div class="nav-item" onclick="showPage('health')">🩺 Health Monitor</div>
+    <div class="nav-item" onclick="showPage('analytics')">📈 Analytics</div>
+    <h1>Operations</h1>
+    <div class="nav-item" onclick="showPage('bulk')">⚡ Bulk Actions</div>
+    <div class="nav-item" onclick="showPage('admins')">👤 Admin Users</div>
+    <h1>Quick Access</h1>
+    <div class="nav-item" onclick="showPage('impersonate')">🔑 Impersonate</div>
+  </div>
+  <div class="main">
+
+    <!-- LOGIN -->
+    <div class="page active" id="page-login">
+      <div style="max-width:400px;margin:80px auto">
+        <div class="card">
+          <h3>🔐 JARVIS Admin Login</h3>
+          <div class="form-row full"><label>Email</label><input id="login-email" type="email" placeholder="admin@hoaledger.com"></div>
+          <div class="form-row full"><label>Password</label><input id="login-password" type="password" placeholder="••••••••"></div>
+          <button class="btn primary" style="width:100%;margin-top:8px" onclick="doLogin()">Sign In</button>
+          <div id="login-error" style="color:var(--red);font-size:13px;margin-top:8px;display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page" id="page-dashboard">
+      <div class="topbar">
+        <h2>Platform Dashboard</h2>
+        <span class="admin-badge">JARVIS ADMIN</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card blue"><div class="label">Organizations</div><div class="value" id="s-orgs">0</div><div class="sub" id="s-orgs-active">0 active</div></div>
+        <div class="stat-card"><div class="label">Total Members</div><div class="value" id="s-members">0</div><div class="sub" id="s-past-due">0 past due</div></div>
+        <div class="stat-card green"><div class="label">Monthly Revenue</div><div class="value" id="s-revenue">$0</div><div class="sub">This month</div></div>
+        <div class="stat-card"><div class="label">Active Users (7d)</div><div class="value" id="s-users">0</div><div class="sub" id="s-total-users">0 total</div></div>
+      </div>
+      <div class="card">
+        <h3>📋 Recent Activity</h3>
+        <div id="activity-list"><div class="empty">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- ORGANIZATIONS -->
+    <div class="page" id="page-orgs">
+      <div class="topbar">
+        <h2>HOA Organizations</h2>
+        <button class="btn primary" onclick="openNewOrgModal()">+ New Organization</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Name</th><th>Location</th><th>Tier</th><th>Members</th><th>Outstanding</th><th>Actions</th></tr></thead>
+          <tbody id="orgs-table"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- HEALTH -->
+    <div class="page" id="page-health">
+      <div class="topbar">
+        <h2>🩺 Health Monitor</h2>
+        <button class="btn" onclick="loadHealth()">↻ Refresh</button>
+      </div>
+      <div id="health-summary" class="card" style="margin-bottom:16px">Loading...</div>
+      <div id="health-list"></div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div class="page" id="page-analytics">
+      <div class="topbar"><h2>📈 Platform Analytics</h2></div>
+      <div class="card"><h3>Revenue by Month</h3><div id="analytics-revenue"><div class="empty">Loading...</div></div></div>
+      <div class="card"><h3>Member Growth</h3><div id="analytics-members"><div class="empty">Loading...</div></div></div>
+    </div>
+
+    <!-- BULK ACTIONS -->
+    <div class="page" id="page-bulk">
+      <div class="topbar"><h2>⚡ Bulk Operations</h2></div>
+      <div class="card">
+        <h3>JARVIS Daily Operations</h3>
+        <p style="color:var(--muted);margin-bottom:16px;font-size:14px">Run operations across all active HOAs</p>
+        <div class="actions">
+          <button class="btn primary" onclick="runBulk('reminders')">🔔 Process All Reminders</button>
+          <button class="btn primary" onclick="runBulk('late-fees')">💰 Apply All Late Fees</button>
+        </div>
+        <div id="bulk-results" style="margin-top:16px"></div>
+      </div>
+    </div>
+
+    <!-- ADMINS -->
+    <div class="page" id="page-admins">
+      <div class="topbar">
+        <h2>👤 Platform Admins</h2>
+        <button class="btn primary" onclick="openNewAdminModal()">+ New Admin</button>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th></tr></thead>
+          <tbody id="admins-table"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- IMPERSONATE -->
+    <div class="page" id="page-impersonate">
+      <div class="topbar"><h2>🔑 Impersonate User</h2></div>
+      <div class="card">
+        <p style="color:var(--muted);margin-bottom:16px;font-size:14px">Generate a login token to access any HOA as any user for debugging.</p>
+        <div class="form-row">
+          <div><label>Organization</label><select id="imp-org" onchange="loadOrgUsers()"><option value="">Select HOA...</option></select></div>
+          <div><label>User</label><select id="imp-user"><option value="">Select user...</option></select></div>
+        </div>
+        <button class="btn primary" onclick="doImpersonate()">Generate Token & Open</button>
+        <div id="imp-result" style="margin-top:16px"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- NEW ORG MODAL -->
+<div class="modal-overlay" id="modal-new-org">
+  <div class="modal">
+    <h3>Create New HOA Organization</h3>
+    <div class="form-row"><div><label>Name *</label><input id="org-name" placeholder="Sunset Ridge HOA"></div><div><label>Email</label><input id="org-email" placeholder="admin@sunsetridge.com"></div></div>
+    <div class="form-row"><div><label>Address</label><input id="org-address" placeholder="123 Main St"></div><div><label>Phone</label><input id="org-phone" placeholder="602-555-1234"></div></div>
+    <div class="form-row"><div><label>City</label><input id="org-city" placeholder="Phoenix"></div><div><label>State</label><input id="org-state" placeholder="AZ"></div></div>
+    <div class="form-row"><div><label>Monthly Dues ($)</label><input id="org-dues" type="number" value="250"></div><div><label>Grace Period (days)</label><input id="org-grace" type="number" value="5"></div></div>
+    <hr style="border-color:var(--border);margin:16px 0">
+    <h3>Manager Account</h3>
+    <div class="form-row"><div><label>Manager Email *</label><input id="mgr-email" placeholder="john@example.com"></div><div><label>Manager Password *</label><input id="mgr-pass" type="password" placeholder="Min 8 chars"></div></div>
+    <div class="form-row"><div><label>First Name</label><input id="mgr-first" placeholder="John"></div><div><label>Last Name</label><input id="mgr-last" placeholder="Smith"></div></div>
+    <div class="actions" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" onclick="closeModal('modal-new-org')">Cancel</button>
+      <button class="btn primary" onclick="createOrg()">Create Organization</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW ADMIN MODAL -->
+<div class="modal-overlay" id="modal-new-admin">
+  <div class="modal">
+    <h3>Create Platform Admin</h3>
+    <div class="form-row"><div><label>Name *</label><input id="adm-name" placeholder="JARVIS"></div><div><label>Email *</label><input id="adm-email" placeholder="jarvis@hoaledger.com"></div></div>
+    <div class="form-row"><div><label>Password *</label><input id="adm-pass" type="password" placeholder="Min 8 chars"></div><div><label>Role</label><select id="adm-role"><option value="super_admin">Super Admin</option><option value="support">Support</option></select></div></div>
+    <div class="actions" style="margin-top:16px;justify-content:flex-end">
+      <button class="btn" onclick="closeModal('modal-new-admin')">Cancel</button>
+      <button class="btn primary" onclick="createAdmin()">Create Admin</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let TOKEN = localStorage.getItem('hoa_admin_token') || '';
+let ORGS = [];
+
+// ── API ──
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN}`,
+      ...(opts.headers || {}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// ── AUTH ──
+async function doLogin() {
+  try {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-password').value;
+    const data = await fetch('/api/hoa/auth/admin/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password: pass}),
+    }).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    TOKEN = data.access_token;
+    localStorage.setItem('hoa_admin_token', TOKEN);
+    document.getElementById('page-login').classList.remove('active');
+    showPage('dashboard');
+    loadDashboard();
+  } catch(e) {
+    const el = document.getElementById('login-error');
+    el.style.display = 'block';
+    el.textContent = e.message;
+  }
+}
+
+// ── INIT ──
+async function init() {
+  if (TOKEN) {
+    try {
+      await api('/api/hoa/auth/me');
+      document.getElementById('page-login').classList.remove('active');
+      showPage('dashboard');
+      loadDashboard();
+    } catch(e) {
+      TOKEN = '';
+      localStorage.removeItem('hoa_admin_token');
+    }
+  }
+}
+
+// ── NAVIGATION ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${name}`)?.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event?.target?.classList.add('active');
+
+  if (name === 'dashboard') loadDashboard();
+  else if (name === 'orgs') loadOrgs();
+  else if (name === 'health') loadHealth();
+  else if (name === 'analytics') loadAnalytics();
+  else if (name === 'admins') loadAdmins();
+  else if (name === 'impersonate') loadImpersonate();
+}
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+  try {
+    const data = await api('/api/hoa/admin/dashboard');
+    const p = data.platform;
+    document.getElementById('s-orgs').textContent = p.total_organizations;
+    document.getElementById('s-orgs-active').textContent = `${p.active_organizations} active`;
+    document.getElementById('s-members').textContent = p.total_members.toLocaleString();
+    document.getElementById('s-past-due').textContent = `${p.past_due_members} past due`;
+    document.getElementById('s-revenue').textContent = `$${p.monthly_revenue.toLocaleString(undefined,{minimumFractionDigits:2})}`;
+    document.getElementById('s-users').textContent = p.active_users_7d;
+    document.getElementById('s-total-users').textContent = `${p.total_users} total`;
+
+    const actEl = document.getElementById('activity-list');
+    if (data.recent_activity?.length) {
+      actEl.innerHTML = data.recent_activity.map(a => `
+        <div class="activity-item">
+          <div><span class="action">${a.action}</span> — ${a.hoa_organizations?.name || 'Platform'}</div>
+          <div class="meta">${new Date(a.created_at).toLocaleString()}</div>
+        </div>`).join('');
+    } else {
+      actEl.innerHTML = '<div class="empty">No recent activity</div>';
+    }
+  } catch(e) { console.error(e); }
+}
+
+// ── ORGANIZATIONS ──
+async function loadOrgs() {
+  try {
+    const data = await api('/api/hoa/admin/organizations');
+    ORGS = data.organizations;
+    const tbody = document.getElementById('orgs-table');
+    if (!ORGS.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No organizations yet</td></tr>'; return; }
+    tbody.innerHTML = ORGS.map(o => {
+      const s = o.stats || {};
+      const tierClass = o.subscription_tier === 'active' ? 'green' : o.subscription_tier === 'cancelled' ? 'red' : 'yellow';
+      return `<tr>
+        <td><strong>${o.name}</strong></td>
+        <td>${o.city || ''}, ${o.state || ''}</td>
+        <td><span class="badge ${tierClass}">${o.subscription_tier}</span></td>
+        <td>${s.total_members || 0}</td>
+        <td>$${(s.total_outstanding || 0).toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+        <td class="actions">
+          <button class="btn sm" onclick="window.open('/hoa/manager?hoa=${o.id}','_blank')">Open</button>
+          <button class="btn sm" onclick="repairOrg('${o.id}')">Repair</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    // Populate impersonate dropdown too
+    const impSel = document.getElementById('imp-org');
+    impSel.innerHTML = '<option value="">Select HOA...</option>' + ORGS.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+function openNewOrgModal() { document.getElementById('modal-new-org').classList.add('show'); }
+function openNewAdminModal() { document.getElementById('modal-new-admin').classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+async function createOrg() {
+  try {
+    const body = {
+      name: document.getElementById('org-name').value,
+      email: document.getElementById('org-email').value,
+      address: document.getElementById('org-address').value,
+      phone: document.getElementById('org-phone').value,
+      city: document.getElementById('org-city').value,
+      state: document.getElementById('org-state').value,
+      default_monthly_dues: parseFloat(document.getElementById('org-dues').value) || 0,
+      grace_period_days: parseInt(document.getElementById('org-grace').value) || 5,
+      manager_email: document.getElementById('mgr-email').value,
+      manager_password: document.getElementById('mgr-pass').value,
+      manager_first_name: document.getElementById('mgr-first').value,
+      manager_last_name: document.getElementById('mgr-last').value,
+    };
+    await api('/api/hoa/admin/organizations', {method:'POST', body});
+    closeModal('modal-new-org');
+    toast('Organization created!', 'success');
+    loadOrgs();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function repairOrg(orgId) {
+  try {
+    await api(`/api/hoa/admin/organizations/${orgId}/repair`, {method:'POST', body:{actions:['seed_accounts','seed_templates','seed_reminders','recalc_balances']}});
+    toast('Organization repaired!', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── HEALTH ──
+async function loadHealth() {
+  try {
+    const data = await api('/api/hoa/admin/health');
+    const pct = data.total_count ? Math.round((data.healthy_count / data.total_count) * 100) : 100;
+    const color = pct === 100 ? 'var(--green)' : pct > 50 ? 'var(--yellow)' : 'var(--red)';
+    document.getElementById('health-summary').innerHTML = `
+      <h3>Overall: ${data.overall.toUpperCase()}</h3>
+      <div style="font-size:14px;color:var(--muted)">${data.healthy_count}/${data.total_count} organizations healthy</div>
+      <div class="health-bar"><div class="fill" style="width:${pct}%;background:${color}"></div></div>`;
+
+    document.getElementById('health-list').innerHTML = data.organizations.map(o => `
+      <div class="card">
+        <h3>${o.name} <span class="badge ${o.status === 'healthy' ? 'green' : 'red'}">${o.status}</span></h3>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0">
+          <div><span style="color:var(--muted);font-size:12px">Members</span><div style="font-size:18px;font-weight:600">${o.member_count}</div></div>
+          <div><span style="color:var(--muted);font-size:12px">Accounts</span><div style="font-size:18px;font-weight:600">${o.accounts_count}</div></div>
+          <div><span style="color:var(--muted);font-size:12px">Templates</span><div style="font-size:18px;font-weight:600">${o.templates_count}</div></div>
+          <div><span style="color:var(--muted);font-size:12px">Manager</span><div style="font-size:18px;font-weight:600">${o.has_manager ? '✅' : '❌'}</div></div>
+        </div>
+        ${o.issues.length ? '<div style="color:var(--red);font-size:13px">' + o.issues.map(i=>'⚠ '+i).join('<br>') + '</div>' : ''}
+        ${o.issues.length ? `<button class="btn sm" style="margin-top:8px" onclick="repairOrg('${o.hoa_id}')">Auto-Repair</button>` : ''}
+      </div>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+// ── ANALYTICS ──
+async function loadAnalytics() {
+  try {
+    const data = await api('/api/hoa/admin/analytics');
+    const revEl = document.getElementById('analytics-revenue');
+    const months = Object.entries(data.revenue.monthly_totals).sort((a,b) => a[0].localeCompare(b[0]));
+    if (months.length) {
+      const maxRev = Math.max(...months.map(m => m[1]));
+      revEl.innerHTML = '<div style="display:flex;align-items:flex-end;gap:4px;height:200px">' +
+        months.map(([m,v]) => {
+          const h = maxRev ? (v/maxRev*180) : 0;
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:11px;color:var(--muted)">$${(v/1000).toFixed(1)}k</div>
+            <div style="width:100%;height:${h}px;background:var(--accent);border-radius:4px 4px 0 0;min-height:2px"></div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">${m.slice(5)}</div>
+          </div>`;
+        }).join('') + '</div>';
+    } else { revEl.innerHTML = '<div class="empty">No payment data yet</div>'; }
+
+    const memEl = document.getElementById('analytics-members');
+    const mMonths = Object.entries(data.members.monthly_signups).sort((a,b) => a[0].localeCompare(b[0]));
+    if (mMonths.length) {
+      const maxM = Math.max(...mMonths.map(m => m[1]));
+      memEl.innerHTML = '<div style="display:flex;align-items:flex-end;gap:4px;height:200px">' +
+        mMonths.map(([m,v]) => {
+          const h = maxM ? (v/maxM*180) : 0;
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:11px;color:var(--muted)">${v}</div>
+            <div style="width:100%;height:${h}px;background:var(--green);border-radius:4px 4px 0 0;min-height:2px"></div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">${m.slice(5)}</div>
+          </div>`;
+        }).join('') + '</div>';
+    } else { memEl.innerHTML = '<div class="empty">No member data yet</div>'; }
+  } catch(e) { console.error(e); }
+}
+
+// ── BULK ──
+async function runBulk(type) {
+  const el = document.getElementById('bulk-results');
+  el.innerHTML = '<div style="color:var(--muted)">Processing...</div>';
+  try {
+    const endpoint = type === 'reminders' ? '/api/hoa/admin/run-all-reminders' : '/api/hoa/admin/run-all-late-fees';
+    const data = await api(endpoint, {method:'POST'});
+    el.innerHTML = `<div class="card" style="margin-top:8px">
+      <strong>Processed ${data.processed} organizations</strong>
+      ${data.results.map(r => `<div style="padding:4px 0;font-size:13px">${r.name || r.hoa_id}: <span class="badge ${r.status === 'processed' ? 'green' : 'red'}">${r.status}</span></div>`).join('')}
+    </div>`;
+    toast('Bulk operation complete!', 'success');
+  } catch(e) { el.innerHTML = `<div style="color:var(--red)">${e.message}</div>`; }
+}
+
+// ── ADMINS ──
+async function loadAdmins() {
+  try {
+    const data = await api('/api/hoa/admin/admins');
+    const tbody = document.getElementById('admins-table');
+    tbody.innerHTML = data.admins.map(a => `<tr>
+      <td><strong>${a.name}</strong></td>
+      <td>${a.email}</td>
+      <td><span class="badge blue">${a.role}</span></td>
+      <td>${a.last_login_at ? new Date(a.last_login_at).toLocaleDateString() : 'Never'}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="empty">No admins</td></tr>';
+  } catch(e) { console.error(e); }
+}
+
+async function createAdmin() {
+  try {
+    await api('/api/hoa/admin/admins', {method:'POST', body:{
+      name: document.getElementById('adm-name').value,
+      email: document.getElementById('adm-email').value,
+      password: document.getElementById('adm-pass').value,
+      role: document.getElementById('adm-role').value,
+    }});
+    closeModal('modal-new-admin');
+    toast('Admin created!', 'success');
+    loadAdmins();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── IMPERSONATE ──
+async function loadImpersonate() {
+  if (!ORGS.length) await loadOrgs();
+}
+
+async function loadOrgUsers() {
+  const orgId = document.getElementById('imp-org').value;
+  if (!orgId) return;
+  try {
+    const data = await api(`/api/hoa/${orgId}/users`);
+    document.getElementById('imp-user').innerHTML = '<option value="">Default (first manager)</option>' +
+      data.users.map(u => `<option value="${u.id}">${u.first_name} ${u.last_name} (${u.role})</option>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+async function doImpersonate() {
+  const orgId = document.getElementById('imp-org').value;
+  const userId = document.getElementById('imp-user').value;
+  if (!orgId) { toast('Select an organization', 'error'); return; }
+  try {
+    const body = userId ? {user_id: userId} : {};
+    const data = await api(`/api/hoa/admin/organizations/${orgId}/impersonate`, {method:'POST', body});
+    document.getElementById('imp-result').innerHTML = `
+      <div class="card">
+        <p>✅ Token generated for <strong>${data.user.name}</strong> (${data.user.role})</p>
+        <p style="font-size:13px;color:var(--muted);margin:8px 0">Expires in ${data.expires_in/3600} hours</p>
+        <div class="actions">
+          <button class="btn primary" onclick="window.open('/hoa/manager?hoa=${orgId}&token=${data.token}','_blank')">Open Manager</button>
+          <button class="btn" onclick="window.open('/hoa/portal?hoa=${orgId}&token=${data.token}','_blank')">Open Portal</button>
+        </div>
+      </div>`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── TOAST ──
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── BOOT ──
+init();
+</script>
+</body>
+</html>

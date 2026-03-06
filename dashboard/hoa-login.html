@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOA Ledger — Sign In</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#2563eb;--primary-dark:#1d4ed8;--bg:#f8fafc;--card:white;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--red:#ef4444;--green:#22c55e}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.container{width:420px;padding:20px}
+.logo{text-align:center;margin-bottom:32px}
+.logo h1{font-size:24px;font-weight:800;color:var(--primary)}
+.logo p{font-size:14px;color:var(--muted);margin-top:4px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.card h2{font-size:18px;margin-bottom:20px;font-weight:700}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.field input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;transition:.2s}
+.field input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.btn{width:100%;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:.2s}
+.btn-primary{background:var(--primary);color:white}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:white;color:var(--text);border:1px solid var(--border);margin-top:8px}
+.btn-secondary:hover{background:var(--bg)}
+.error{color:var(--red);font-size:13px;margin-top:8px;display:none}
+.links{text-align:center;margin-top:16px;font-size:13px;color:var(--muted)}
+.links a{color:var(--primary);text-decoration:none}
+
+/* ORG PICKER */
+.org-list{max-height:320px;overflow-y:auto}
+.org-card{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:.2s}
+.org-card:hover{border-color:var(--primary);background:rgba(37,99,235,.04)}
+.org-icon{width:44px;height:44px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;flex-shrink:0}
+.org-icon img{width:44px;height:44px;border-radius:10px;object-fit:cover}
+.org-info h3{font-size:15px;font-weight:600}
+.org-info p{font-size:12px;color:var(--muted)}
+.org-role{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;flex-shrink:0}
+.org-role.manager{background:#dbeafe;color:var(--primary)}
+.org-role.board{background:#fef3c7;color:#92400e}
+.org-role.member{background:#f1f5f9;color:var(--muted)}
+
+.step{display:none}.step.active{display:block}
+.back-link{font-size:13px;color:var(--primary);cursor:pointer;margin-bottom:16px;display:inline-block}
+.divider{text-align:center;color:var(--muted);font-size:12px;margin:16px 0;position:relative}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:var(--border)}
+.divider::before{left:0}.divider::after{right:0}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">
+    <h1>HOA Ledger</h1>
+    <p>Property management made simple</p>
+  </div>
+
+  <!-- STEP 1: Email + Password -->
+  <div class="step active" id="step-login">
+    <div class="card">
+      <h2>Sign in to your account</h2>
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" id="login-email" placeholder="you@example.com" autofocus>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="Enter your password">
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
+      <div class="error" id="login-error"></div>
+      <div class="links">
+        <a href="#" onclick="showStep('step-reset')">Forgot password?</a>
+      </div>
+    </div>
+    <div class="links" style="margin-top:12px">
+      JARVIS admin? <a href="/hoa/admin">Go to Command Center</a>
+    </div>
+  </div>
+
+  <!-- STEP 2: Pick an Organization (multi-HOA) -->
+  <div class="step" id="step-pick-org">
+    <div class="card">
+      <span class="back-link" onclick="showStep('step-login')">← Back to login</span>
+      <h2>Select Organization</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Your email is associated with multiple HOAs. Choose one to continue.</p>
+      <div class="org-list" id="org-list"></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Password Reset -->
+  <div class="step" id="step-reset">
+    <div class="card">
+      <span class="back-link" onclick="showStep('step-login')">← Back to login</span>
+      <h2>Reset Password</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter your email and we'll send you a reset link.</p>
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" id="reset-email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>HOA Organization ID</label>
+        <input type="text" id="reset-hoa" placeholder="Provided by your manager">
+      </div>
+      <button class="btn btn-primary" onclick="doReset()">Send Reset Link</button>
+      <div class="error" id="reset-error"></div>
+      <div id="reset-success" style="color:var(--green);font-size:13px;margin-top:8px;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let LOGIN_EMAIL = '';
+let LOGIN_PASSWORD = '';
+
+function showStep(id) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (!email || !password) { errEl.textContent = 'Please enter email and password'; errEl.style.display = 'block'; return; }
+
+  LOGIN_EMAIL = email;
+  LOGIN_PASSWORD = password;
+
+  try {
+    // Try email-only login first (no hoa_id) — handles both single and multi-org
+    const res = await fetch('/api/hoa/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password}),
+    });
+    const data = await res.json();
+
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = 'block'; return; }
+
+    if (data.multi_org) {
+      // Show org picker
+      renderOrgPicker(data.organizations);
+      showStep('step-pick-org');
+      return;
+    }
+
+    // Single org — go straight in
+    completeLogin(data);
+  } catch(e) {
+    errEl.textContent = 'Connection error. Please try again.';
+    errEl.style.display = 'block';
+  }
+}
+
+function renderOrgPicker(orgs) {
+  const list = document.getElementById('org-list');
+  list.innerHTML = orgs.map(o => {
+    const initials = (o.hoa_name || 'HOA').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    const loc = [o.city, o.state].filter(Boolean).join(', ');
+    return `<div class="org-card" onclick="selectOrg('${o.hoa_id}')">
+      <div class="org-icon" ${o.accent_color ? `style="background:${o.accent_color}"` : ''}>
+        ${o.logo_url ? `<img src="${o.logo_url}" alt="">` : initials}
+      </div>
+      <div class="org-info">
+        <h3>${o.hoa_name}</h3>
+        <p>${loc || 'HOA Organization'}</p>
+      </div>
+      <span class="org-role ${o.role}">${o.role}</span>
+    </div>`;
+  }).join('');
+}
+
+async function selectOrg(hoaId) {
+  try {
+    const res = await fetch('/api/hoa/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({hoa_id: hoaId, email: LOGIN_EMAIL, password: LOGIN_PASSWORD}),
+    });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error); return; }
+    completeLogin(data);
+  } catch(e) { alert('Connection error'); }
+}
+
+function completeLogin(data) {
+  // Store auth state
+  localStorage.setItem('hoa_token', data.access_token);
+  localStorage.setItem('hoa_refresh', data.refresh_token);
+  localStorage.setItem('hoa_user', JSON.stringify(data.user));
+  if (data.other_organizations) {
+    localStorage.setItem('hoa_other_orgs', JSON.stringify(data.other_organizations));
+  }
+
+  // Redirect based on role
+  const role = data.user.role;
+  const hoaId = data.user.hoa_id;
+
+  if (role === 'manager' || role === 'board') {
+    window.location.href = `/hoa/manager?hoa=${hoaId}`;
+  } else {
+    const memberId = data.user.member_id || '';
+    window.location.href = `/hoa/portal?hoa=${hoaId}&member=${memberId}`;
+  }
+}
+
+async function doReset() {
+  const email = document.getElementById('reset-email').value.trim();
+  const hoaId = document.getElementById('reset-hoa').value.trim();
+  const errEl = document.getElementById('reset-error');
+  const successEl = document.getElementById('reset-success');
+  errEl.style.display = 'none';
+  successEl.style.display = 'none';
+
+  if (!email || !hoaId) { errEl.textContent = 'Email and HOA ID required'; errEl.style.display = 'block'; return; }
+
+  try {
+    await fetch('/api/hoa/auth/reset-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, hoa_id: hoaId}),
+    });
+    successEl.textContent = 'If an account exists, a reset link has been sent.';
+    successEl.style.display = 'block';
+  } catch(e) {
+    errEl.textContent = 'Error sending reset';
+    errEl.style.display = 'block';
+  }
+}
+
+// Allow Enter key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const active = document.querySelector('.step.active');
+    if (active?.id === 'step-login') doLogin();
+    else if (active?.id === 'step-reset') doReset();
+  }
+});
+</script>
+</body>
+</html>
